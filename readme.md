@@ -53,8 +53,8 @@ pdf-editor-react/
 1. Clone this repo:
 
    ```bash
-   git clone https://github.com/surajvsk/pdf-editor-react.git
-   cd pdf-editor-react
+   git clone https://github.com/surajvsk/IPO-ASBA-PDF-Form-Editor.git
+   cd IPO-ASBA-PDF-Form-Editor
    ```
 
 2. Install dependencies:
