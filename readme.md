@@ -1,135 +1,153 @@
----
+# IPO ASBA PDF Form Editor
 
-# 📄 IPO ASBA PDF Form Editor (ReactJS)
+Place your own fields on an IPO ASBA PDF, map them to your data, and download a filled PDF.
 
-This project is a **ReactJS-based PDF editor** that allows you to **view, overlay, and edit IPO ASBA forms** dynamically.
-It replaces the old **Bootstrap + jQuery + PDF.js** implementation with a **modern React functional component** using hooks and state management.
+The editor runs in the browser. A Spring Boot service stamps the fields onto the PDF with iText.
 
----
+## Requirements
 
-## 🚀 Features
+- Java 17 or newer
+- Node.js 18 or newer
+- Maven, only if `backend/target/asba-print.war` is not already built
 
-* 📑 Upload and preview **PDF forms** using **PDF.js**
-* 📝 Overlay editable fields (Application No, Email, Mobile No, Name, Amount, UPI, etc.)
-* 🎯 Drag and move fields directly on top of the PDF
-* ⚡ Update font size, spacing, and values from a live table
-* ✅ Select IPO symbol and form type
-* 📤 Generate JSON output with all active field coordinates (for backend processing or API integration)
-* 🖼 Real-time preview with accurate PDF coordinates
-* 🔄 Fully React-based (no jQuery)
+## Run the project
 
----
+From the repository root:
 
-## 🏗 Project Structure
+**Windows**
 
-```
-pdf-editor-react/
-│── public/                # Static assets
-│   └── index.html
-│
-│── src/
-│   ├── components/
-│   │   └── PdfEditor.js   # Main PDF editor component
-│   ├── App.js             # Root app file
-│   ├── index.js           # React entry point
-│   └── styles.css         # Optional custom styles
-│
-│── package.json           # Dependencies & scripts
-│── README.md              # Project documentation
+```bat
+run.bat
 ```
 
----
+**macOS or Linux**
 
-## 📦 Dependencies
+```sh
+chmod +x run.sh
+./run.sh
+```
 
-* [React](https://reactjs.org/) (UI Framework)
-* [Bootstrap 5](https://getbootstrap.com/) (UI Styling)
-* [pdf.js](https://mozilla.github.io/pdf.js/) (PDF rendering)
+- Editor: http://localhost:3000
+- Print service: http://localhost:8080
 
----
+The script builds the WAR when it is missing, starts the print service, then starts the editor. On Windows the print service opens in its own window. On macOS and Linux it stops when you stop the script.
 
-## ⚙️ Installation
+## Run each part yourself
 
-1. Clone this repo:
+Print service:
 
-   ```bash
-   git clone https://github.com/surajvsk/IPO-ASBA-PDF-Form-Editor.git
-   cd IPO-ASBA-PDF-Form-Editor
-   ```
+```bat
+cd backend
+mvn package
+java -jar target\asba-print.war
+```
 
-2. Install dependencies:
+Editor:
 
-   ```bash
-   npm install
-   ```
+```bat
+cd frontend
+npm install
+npm start
+```
 
-   ⚠️ Fix for `ajv` mismatch error:
+`frontend/package.json` proxies `/api` to http://localhost:8080, so the editor can download a filled PDF while both are running.
 
-   ```bash
-   npm install ajv@6 ajv-keywords@3 --save
-   ```
+## How to use the editor
 
-3. Start development server:
+Open **Instructions** in the navbar, or follow these steps:
 
-   ```bash
-   npm start
-   ```
+1. Enter the IPO symbol and choose Printed form or Blank form.
+2. Upload the ASBA PDF, or click **Open sample form**.
+3. Click **Add field**, name the key, turn it on, and drag it onto the matching box. Arrow keys nudge the selected field. Shift moves it 10 points.
+4. Set page, size, weight, gap, and break width.
+5. Paste a data JSON and click **Apply data**.
+6. **Save layout**, then **Download filled PDF**.
 
-4. Open in browser:
+**Load sample keys** restores the practice field names used by the sample form. **Clear** removes every field.
 
-   ```
-   http://localhost:3000
-   ```
+Layouts are stored in this browser, one layout per symbol and form type.
 
----
+### Field settings
 
-## 📋 Usage Instructions
+Coordinates are PDF points from the bottom-left. `y` is the text baseline.
 
-1. **Select IPO Symbol** (e.g., `ARUNAYA`, `ATHER`)
-2. **Upload ASBA PDF Form** (`.pdf`)
-3. **Select Form Type** (`Printed Form` / `Blank Form`)
-4. Enable/disable overlay fields using the **checkboxes in the table**
-5. Drag fields on the PDF to match the correct placement
-6. Adjust **font size**, **spacing**, and **values** directly from the table
-7. Click **Final Submission** → JSON data will be generated in console
+| Setting | Meaning |
+| --- | --- |
+| Page | PDF page that receives the field |
+| Size | Font size in points |
+| Weight | Normal or Bold |
+| Gap | Extra space between characters, in points |
+| Break | Line width in points. `0` keeps one line |
 
-   ```json
-   {
-     "symbol": "ARUNAYA",
-     "type": "PRINTED_FORM",
-     "coordinates": [
-       {
-         "key": "ApplicationNo1",
-         "x": 150,
-         "y": 150,
-         "value": "55556666",
-         "fontSize": 10,
-         "wordspaceCount": 0
-       },
-       ...
-     ]
-   }
-   ```
+### Data JSON
 
----
+**Apply data** fills keys that already exist and adds keys that do not.
 
-## 🔧 Future Enhancements
+```json
+{
+  "PAN": "AYCPV8888G",
+  "ApplicantName": "Dynamite Technology"
+}
+```
 
-* ✅ Export filled PDF with overlays (Preview & Download)
-* ✅ Save JSON data to backend API
-* 🔍 Add zoom & multi-page navigation
-* 📱 Make drag-and-drop mobile-friendly
+You can also paste a saved field list, or the JSON from **Download JSON**.
 
----
+### Print JSON
 
-## 👨‍💻 Developer Notes
+Active fields are sent to the print service in this shape:
 
-* This tool is tailored for **IPO ASBA application forms**, but can be adapted to any kind of **PDF form overlay project**.
-* JSON output can be directly consumed by backend services for **auto-filling forms, validation, and submission workflows**.
+```json
+{
+  "symbol": "ARUNAYA",
+  "type": "PRINTED_FORM",
+  "coordinates": [
+    {
+      "key": "PAN",
+      "x": 206,
+      "y": 740,
+      "value": "AYCPV8888G",
+      "fontSize": 11,
+      "gap": 0,
+      "fontWeight": 400,
+      "breakWidth": 0,
+      "page": 1
+    }
+  ]
+}
+```
 
----
+`fontWeight` is `400` for normal and `700` for bold.
 
-## 📜 License
+## Print service
+
+`POST /api/print` accepts multipart form data:
+
+- `pdf` — the uploaded form
+- `data` — the print JSON above
+
+The response is the filled PDF. `GET /api/health` returns `{"status":"ok"}`.
+
+Deploy `backend/target/asba-print.war` to Tomcat, or run it with `java -jar`. When the WAR is not the root application, the print URL is under `/asba-print`.
+
+iText 7 is AGPL. A public release of this service needs a commercial iText license or a different PDF library.
+
+## Project structure
+
+```
+IPO-ASBA-PDF-Form-Editor/
+├── run.bat
+├── run.sh
+├── frontend/          React editor
+│   └── src/
+│       ├── components/PdfEditor.js
+│       ├── components/Instructions.js
+│       └── data/fields.js
+└── backend/           Spring Boot WAR
+    └── src/main/java/com/dynamite/asba/print/
+        ├── PdfPrintService.java
+        └── TextLayout.java
+```
+
+## License
 
 MIT License © 2025 Dynamite Technology
-
