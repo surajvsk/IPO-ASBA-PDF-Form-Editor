@@ -31,8 +31,10 @@ const Instructions = () => {
             <li>Page — which PDF page receives the field.</li>
             <li>Size — font size.</li>
             <li>Weight — Normal or Bold.</li>
-            <li>Gap — extra space between characters.</li>
-            <li>Break — line width. 0 keeps the text on one line.</li>
+            <li>Gap — extra space between characters. Use this when Cell is 0.</li>
+            <li>Cell — width of one printed box. Each character is centered in the next box. 0 turns this off.</li>
+            <li>Break — line width. 0 keeps the text on one line. Ignored while Cell is set.</li>
+            <li>Copy — duplicates the field 28 points lower, for the next bid row.</li>
           </ul>
         </li>
         <li>
@@ -43,6 +45,17 @@ const Instructions = () => {
   "ApplicantName": "Dynamite Technology"
 }`}</pre>
           <p>You can also paste a saved field list, or the print JSON from Download JSON.</p>
+        </li>
+        <li>
+          <h2>Print many applications</h2>
+          <p>
+            Paste a JSON list and click Print batch. The print service copies the PDF once per object and fills each
+            copy from that object’s keys. One download contains every form.
+          </p>
+          <pre className="json-preview">{`[
+  { "PAN": "AYCPV8888G", "ApplicantName": "Ada" },
+  { "PAN": "ABCDE1234F", "ApplicantName": "Ravi" }
+]`}</pre>
         </li>
         <li>
           <h2>Save and print</h2>

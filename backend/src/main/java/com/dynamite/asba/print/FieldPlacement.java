@@ -11,6 +11,7 @@ public class FieldPlacement {
     private float gap;
     private int fontWeight = 400;
     private float breakWidth;
+    private float cellWidth;
     private int page = 1;
 
     public String getKey() {
@@ -83,6 +84,14 @@ public class FieldPlacement {
 
     public void setBreakWidth(float breakWidth) {
         this.breakWidth = breakWidth;
+    }
+
+    public float getCellWidth() {
+        return cellWidth;
+    }
+
+    public void setCellWidth(float cellWidth) {
+        this.cellWidth = cellWidth;
     }
 
     public int getPage() {

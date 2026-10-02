@@ -298,20 +298,11 @@ const PdfEditor = () => {
     setStatus({ type: "ok", text: "Downloaded the coordinate JSON." });
   };
 
-  const downloadFilledPdf = async () => {
-    if (!pdfBytesRef.current) {
-      setStatus({ type: "error", text: "Upload a PDF or open the sample form first." });
-      return;
-    }
-    if (!requireIdentity()) return;
-    if (activeFields.length === 0) {
-      setStatus({ type: "error", text: "Turn on at least one field before downloading." });
-      return;
-    }
+  const postPrint = async (data, filename, successText) => {
     try {
       const form = new FormData();
       form.append("pdf", new Blob([pdfBytesRef.current], { type: "application/pdf" }), fileName || "form.pdf");
-      form.append("data", JSON.stringify(payload));
+      form.append("data", JSON.stringify(data));
       const response = await fetch("/api/print", { method: "POST", body: form });
       if (!response.ok) {
         let message = "Could not print the PDF.";
@@ -324,8 +315,8 @@ const PdfEditor = () => {
         throw new Error(message);
       }
       const bytes = await response.arrayBuffer();
-      downloadBlob(bytes, `${symbol.trim()}-${formType}.pdf`, "application/pdf");
-      setStatus({ type: "ok", text: "Downloaded the filled PDF." });
+      downloadBlob(bytes, filename, "application/pdf");
+      setStatus({ type: "ok", text: successText });
     } catch (error) {
       const message = error?.message || "Could not print the PDF.";
       setStatus({
@@ -335,6 +326,66 @@ const PdfEditor = () => {
           : message,
       });
     }
+  };
+
+  const downloadFilledPdf = async () => {
+    if (!pdfBytesRef.current) {
+      setStatus({ type: "error", text: "Upload a PDF or open the sample form first." });
+      return;
+    }
+    if (!requireIdentity()) return;
+    if (activeFields.length === 0) {
+      setStatus({ type: "error", text: "Turn on at least one field before downloading." });
+      return;
+    }
+    await postPrint(payload, `${symbol.trim()}-${formType}.pdf`, "Downloaded the filled PDF.");
+  };
+
+  const downloadBatchPdf = async () => {
+    if (!pdfBytesRef.current) {
+      setStatus({ type: "error", text: "Upload a PDF or open the sample form first." });
+      return;
+    }
+    if (!requireIdentity()) return;
+    if (activeFields.length === 0) {
+      setStatus({ type: "error", text: "Turn on at least one field before downloading." });
+      return;
+    }
+    let records;
+    try {
+      records = JSON.parse(dataJson);
+    } catch {
+      setStatus({ type: "error", text: "Batch data is not valid JSON." });
+      return;
+    }
+    const rows = Array.isArray(records) ? records : null;
+    if (!rows || rows.length === 0 || rows.some((row) => !row || typeof row !== "object" || Array.isArray(row))) {
+      setStatus({ type: "error", text: "Paste a JSON list of applications, one object per form." });
+      return;
+    }
+    await postPrint(
+      { ...payload, records: rows },
+      `${symbol.trim()}-${formType}-batch.pdf`,
+      `Downloaded ${rows.length} filled forms in one PDF.`
+    );
+  };
+
+  const copyDown = (field) => {
+    const copy = createField({
+      key: field.key,
+      value: field.value,
+      x: field.x,
+      y: field.y - 28,
+      page: field.page,
+      fontSize: field.fontSize,
+      gap: field.gap,
+      cellWidth: field.cellWidth,
+      fontWeight: field.fontWeight,
+      breakWidth: field.breakWidth,
+      isActive: field.isActive,
+    });
+    setCoordinates((prev) => [...prev, copy]);
+    setSelectedId(copy.id);
   };
 
   const fitWidth = () => {
@@ -488,6 +539,9 @@ const PdfEditor = () => {
             <button type="button" className="btn btn-sm btn-danger" onClick={downloadFilledPdf}>
               Download filled PDF
             </button>
+            <button type="button" className="btn btn-sm btn-danger" onClick={downloadBatchPdf}>
+              Print batch
+            </button>
           </div>
 
           <div className="d-flex justify-content-between align-items-center mt-3 mb-2">
@@ -522,7 +576,7 @@ const PdfEditor = () => {
           <textarea
             className="form-control form-control-sm mb-2"
             rows={3}
-            placeholder={'Map data JSON, for example {"PAN":"AYCPV8888G","Name":"Ada"}'}
+            placeholder={'One form: {"PAN":"AYCPV8888G"}. Batch: [{"PAN":"AYCPV8888G"},{"PAN":"ABCDE1234F"}]'}
             value={dataJson}
             onChange={(event) => setDataJson(event.target.value)}
           />
@@ -544,8 +598,10 @@ const PdfEditor = () => {
             onChange={(event) => setFilter(event.target.value)}
           />
           <p className="text-secondary small mb-2">
-            Add a key, drag it on the PDF, then paste your own data. Size, gap, and break width are PDF points. Weight is
-            normal or bold. Break width 0 keeps one line. Arrow keys nudge the selected field (Shift moves 10 points).
+            Add a key, drag it on the PDF, then paste your own data. Cell width drops each character into a printed box.
+            Gap adds space between characters when Cell is 0. Copy places the same key 28 points lower for the next bid
+            row. Print batch takes a JSON list and returns one PDF with a form per application. Arrow keys nudge the
+            selected field (Shift moves 10 points).
           </p>
           <div className="field-list">
             {visibleFields.length === 0 && <p className="text-secondary small mb-0">No fields yet. Add one, or load the sample keys.</p>}
@@ -575,6 +631,17 @@ const PdfEditor = () => {
                   />
                   <button
                     type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    title="Copy this field 28 points lower"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      copyDown(field);
+                    }}
+                  >
+                    Copy
+                  </button>
+                  <button
+                    type="button"
                     className="btn btn-sm btn-outline-danger"
                     onClick={(event) => {
                       event.stopPropagation();
@@ -602,6 +669,7 @@ const PdfEditor = () => {
                     ["Page", "page", field.page, 1],
                     ["Size", "fontSize", field.fontSize, 1],
                     ["Gap", "gap", field.gap, 0],
+                    ["Cell", "cellWidth", field.cellWidth, 0],
                     ["Break", "breakWidth", field.breakWidth, 0],
                   ].map(([label, prop, value, minimum]) => (
                     <label key={prop}>
@@ -684,26 +752,42 @@ const PdfEditor = () => {
               <div className="pdf-canvas-wrap" style={{ width: pageSize?.width, height: pageSize?.height }}>
                 <canvas ref={canvasRef} />
                 {overlays.map((field) => {
-                  const lines = wrapLines(field);
+                  const cell = Math.max(0, Number(field.cellWidth) || 0);
+                  const lines = cell > 0 ? [] : wrapLines(field);
+                  const combText = String(field.value || "") || field.key;
+                  const chars = Array.from(combText);
                   const shown = lines.length ? lines.join("\n") : field.key;
+                  const comb = cell > 0;
                   return (
                     <button
                       key={field.id}
                       type="button"
-                      className={`field-overlay${field.id === selectedId ? " selected" : ""}${lines.length ? "" : " placeholder"}`}
+                      className={`field-overlay${field.id === selectedId ? " selected" : ""}${field.value ? "" : " placeholder"}${comb ? " comb" : ""}`}
                       style={{
                         left: field.x * scale,
                         top: (pageSize.pageHeight - field.y) * scale,
                         fontSize: field.fontSize * scale,
                         fontWeight: field.fontWeight >= 600 ? 700 : 400,
-                        letterSpacing: `${field.gap * scale}px`,
+                        letterSpacing: comb ? "0px" : `${field.gap * scale}px`,
                         lineHeight: 1.15,
                         transform: "translateY(-0.8em)",
                         transformOrigin: "0 0.8em",
+                        width: comb ? chars.length * cell * scale : undefined,
+                        height: comb ? field.fontSize * scale * 1.15 : undefined,
                       }}
                       onPointerDown={(event) => startDrag(event, field)}
                     >
-                      {shown}
+                      {comb
+                        ? chars.map((char, index) => (
+                            <span
+                              key={`${field.id}-${index}`}
+                              className="comb-char"
+                              style={{ left: index * cell * scale, width: cell * scale }}
+                            >
+                              {char === " " ? "\u00a0" : char}
+                            </span>
+                          ))
+                        : shown}
                     </button>
                   );
                 })}

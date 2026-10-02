@@ -2,12 +2,14 @@ package com.dynamite.asba.print;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class PrintRequest {
 
     private String symbol;
     private String type;
     private List<FieldPlacement> coordinates = new ArrayList<>();
+    private List<Map<String, Object>> records = new ArrayList<>();
 
     public String getSymbol() {
         return symbol;
@@ -31,5 +33,13 @@ public class PrintRequest {
 
     public void setCoordinates(List<FieldPlacement> coordinates) {
         this.coordinates = coordinates;
+    }
+
+    public List<Map<String, Object>> getRecords() {
+        return records;
+    }
+
+    public void setRecords(List<Map<String, Object>> records) {
+        this.records = records;
     }
 }

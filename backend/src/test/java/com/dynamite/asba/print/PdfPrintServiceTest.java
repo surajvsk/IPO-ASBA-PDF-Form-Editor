@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -61,6 +62,52 @@ class PdfPrintServiceTest {
         List<String> lines = TextLayout.wrap("Five Thousand", 11f, 0f, 40f, false);
         assertTrue(lines.size() > 1);
         assertEquals("Five", lines.get(0));
+    }
+
+    @Test
+    void centersEachCharacterInACell() throws Exception {
+        FieldPlacement field = new FieldPlacement();
+        field.setKey("PAN");
+        field.setX(72);
+        field.setY(700);
+        field.setValue("AB");
+        field.setFontSize(12);
+        field.setCellWidth(20);
+        field.setPage(1);
+
+        PrintRequest request = new PrintRequest();
+        request.setCoordinates(List.of(field));
+
+        byte[] printed = service.print(blankPdf(), request);
+        try (PdfDocument document = new PdfDocument(new PdfReader(new ByteArrayInputStream(printed)))) {
+            String text = PdfTextExtractor.getTextFromPage(document.getPage(1));
+            assertTrue(text.contains("A"));
+            assertTrue(text.contains("B"));
+        }
+    }
+
+    @Test
+    void printsOneCopyOfTheFormForEachRecord() throws Exception {
+        FieldPlacement field = new FieldPlacement();
+        field.setKey("PAN");
+        field.setX(72);
+        field.setY(700);
+        field.setValue("FALLBACK");
+        field.setPage(1);
+
+        PrintRequest request = new PrintRequest();
+        request.setCoordinates(List.of(field));
+        request.setRecords(List.of(
+                Map.of("PAN", "AAAAA1111A"),
+                Map.of("PAN", "BBBBB2222B")
+        ));
+
+        byte[] printed = service.print(blankPdf(), request);
+        try (PdfDocument document = new PdfDocument(new PdfReader(new ByteArrayInputStream(printed)))) {
+            assertEquals(2, document.getNumberOfPages());
+            assertTrue(PdfTextExtractor.getTextFromPage(document.getPage(1)).contains("AAAAA1111A"));
+            assertTrue(PdfTextExtractor.getTextFromPage(document.getPage(2)).contains("BBBBB2222B"));
+        }
     }
 
     @Test

@@ -173,7 +173,7 @@ body {
 }
 
 .field-card-head {
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   margin-bottom: 6px;
 }
@@ -193,6 +193,17 @@ body {
   color: #6b7280;
   font-style: italic;
   background: rgba(255, 235, 59, 0.25);
+}
+
+.field-overlay.comb {
+  letter-spacing: 0;
+}
+
+.comb-char {
+  position: absolute;
+  top: 0;
+  overflow: hidden;
+  text-align: center;
 }
 
 .field-table-wrap table {
