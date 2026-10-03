@@ -60,9 +60,9 @@ const Instructions = () => {
         <li>
           <h2>Save and print</h2>
           <p>
-            Save layout keeps the positions for this symbol and form type in this browser. Load layout brings them
-            back. Download filled PDF sends the form and the field map to the print service. Copy JSON and Download
-            JSON give you the same map.
+            Save layout keeps the positions for this symbol and form type in the SQLite database. Load layout brings
+            them back. Download filled PDF sends the form and the field map to the print service. Copy JSON and
+            Download JSON give you the same map.
           </p>
         </li>
       </ol>

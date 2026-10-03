@@ -26,6 +26,11 @@ public class PrintController {
         this.objectMapper = objectMapper;
     }
 
+    @GetMapping("/favicon.ico")
+    public ResponseEntity<Void> favicon() {
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/api/health")
     public Map<String, String> health() {
         return Map.of("status", "ok");

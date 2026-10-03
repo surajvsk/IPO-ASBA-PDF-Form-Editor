@@ -17,7 +17,7 @@ const App = () => {
   }, []);
 
   return (
-    <div className="editor-shell">
+    <div className={page === "instructions" ? "editor-shell" : "editor-shell editor-shell-app"}>
       <Navbar page={page} />
       {page === "instructions" ? <Instructions /> : <PdfEditor />}
     </div>

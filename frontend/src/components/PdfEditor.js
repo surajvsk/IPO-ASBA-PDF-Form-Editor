@@ -19,6 +19,24 @@ function clampScale(value) {
   return Math.min(MAX_SCALE, Math.max(MIN_SCALE, value));
 }
 
+async function readApiError(response, fallback) {
+  try {
+    const body = await response.json();
+    if (body.message) return body.message;
+  } catch {
+    /* The service returned a non-JSON error. */
+  }
+  return fallback;
+}
+
+function serviceError(error, fallback) {
+  const message = error?.message || fallback;
+  if (message === "Failed to fetch" || message === "invalid") {
+    return message === "invalid" ? fallback : "Could not reach the print service. Start the backend on port 8080.";
+  }
+  return message;
+}
+
 function downloadBlob(data, filename, type) {
   const blob = data instanceof Blob ? data : new Blob([data], { type });
   const url = URL.createObjectURL(blob);
@@ -245,30 +263,65 @@ const PdfEditor = () => {
     };
   };
 
-  const saveLayout = () => {
-    if (!requireIdentity()) return;
-    localStorage.setItem(layoutStorageKey(symbol, formType), JSON.stringify(coordinates));
+  const applySavedFields = (saved, source) => {
+    setCoordinates(saved.map((item) => createField(item)));
+    setSelectedId(null);
+    const noun = saved.length === 1 ? "field" : "fields";
     setStatus({
       type: "ok",
-      text: `Saved the layout for ${symbol.trim()} / ${formType} in this browser.`,
+      text: source ? `Loaded ${saved.length} ${noun} ${source}` : `Loaded ${saved.length} ${noun}.`,
     });
   };
 
-  const loadLayout = () => {
+  const saveLayout = async () => {
     if (!requireIdentity()) return;
-    const raw = localStorage.getItem(layoutStorageKey(symbol, formType));
-    if (!raw) {
-      setStatus({ type: "error", text: "No saved layout for this symbol and form type." });
-      return;
-    }
     try {
-      const saved = JSON.parse(raw);
-      if (!Array.isArray(saved)) throw new Error("invalid");
-      setCoordinates(saved.map((item) => createField(item)));
-      setSelectedId(null);
-      setStatus({ type: "ok", text: `Loaded ${saved.length} field${saved.length === 1 ? "" : "s"}.` });
-    } catch {
-      setStatus({ type: "error", text: "The saved layout could not be read." });
+      const response = await fetch("/api/layouts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          symbol: symbol.trim(),
+          type: formType,
+          coordinates,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(await readApiError(response, "Could not save the layout."));
+      }
+      localStorage.removeItem(layoutStorageKey(symbol, formType));
+      setStatus({
+        type: "ok",
+        text: `Saved the layout for ${symbol.trim()} / ${formType} in the database.`,
+      });
+    } catch (error) {
+      setStatus({ type: "error", text: serviceError(error, "Could not save the layout.") });
+    }
+  };
+
+  const loadLayout = async () => {
+    if (!requireIdentity()) return;
+    try {
+      const params = new URLSearchParams({ symbol: symbol.trim(), type: formType });
+      const response = await fetch(`/api/layouts?${params}`);
+      if (response.status === 404) {
+        const raw = localStorage.getItem(layoutStorageKey(symbol, formType));
+        if (!raw) {
+          setStatus({ type: "error", text: "No saved layout for this symbol and form type." });
+          return;
+        }
+        const saved = JSON.parse(raw);
+        if (!Array.isArray(saved)) throw new Error("invalid");
+        applySavedFields(saved, "from this browser. Save layout to store them in the database.");
+        return;
+      }
+      if (!response.ok) {
+        throw new Error(await readApiError(response, "Could not load the layout."));
+      }
+      const body = await response.json();
+      if (!Array.isArray(body.coordinates)) throw new Error("invalid");
+      applySavedFields(body.coordinates);
+    } catch (error) {
+      setStatus({ type: "error", text: serviceError(error, "The saved layout could not be read.") });
     }
   };
 
@@ -472,7 +525,7 @@ const PdfEditor = () => {
 
   return (
     <div className="editor-body">
-        <section className="panel">
+        <section className="panel panel-form">
           <h2>Form</h2>
           {status && (
             <div className={`alert ${status.type === "error" ? "alert-danger" : "alert-success"} py-2`} role="status">
@@ -713,7 +766,7 @@ const PdfEditor = () => {
           </details>
         </section>
 
-        <section className="panel">
+        <section className="panel panel-preview">
           <div className="pdf-toolbar mb-2">
             <h2 className="mb-0 me-2">Preview{fileName ? ` — ${fileName}` : ""}</h2>
             <button

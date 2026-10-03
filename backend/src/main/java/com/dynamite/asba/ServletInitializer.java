@@ -7,6 +7,7 @@ public class ServletInitializer extends SpringBootServletInitializer {
 
     @Override
     protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
+        AsbaPrintApplication.ensureDataDirectory();
         return application.sources(AsbaPrintApplication.class);
     }
 }

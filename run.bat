@@ -2,9 +2,26 @@
 setlocal
 cd /d "%~dp0"
 
+if defined JAVA_HOME if exist "%JAVA_HOME%\bin\java.exe" (
+  set "PATH=%JAVA_HOME%\bin;%PATH%"
+)
+
 where java >nul 2>&1
 if errorlevel 1 (
   echo Java 17 or newer is required.
+  exit /b 1
+)
+
+set "JAVA_VER="
+for /f "tokens=3" %%v in ('java -version 2^>^&1 ^| findstr /i "version"') do set "JAVA_VER=%%~v"
+for /f "tokens=1,2 delims=." %%a in ("%JAVA_VER%") do (
+  set "JAVA_MAJOR=%%a"
+  set "JAVA_MINOR=%%b"
+)
+if "%JAVA_MAJOR%"=="1" set "JAVA_MAJOR=%JAVA_MINOR%"
+if %JAVA_MAJOR% LSS 17 (
+  echo Java 17 or newer is required. Found Java %JAVA_VER%.
+  echo Set JAVA_HOME to a JDK 17 or newer install and run this script again.
   exit /b 1
 )
 

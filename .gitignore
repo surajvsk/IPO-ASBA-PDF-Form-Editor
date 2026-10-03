@@ -112,3 +112,5 @@ build
 cert
 
 target/
+backend/data/
+*.db
