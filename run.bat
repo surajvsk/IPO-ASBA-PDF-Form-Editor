@@ -25,13 +25,11 @@ if %JAVA_MAJOR% LSS 17 (
   exit /b 1
 )
 
+call :ensure_maven
+if errorlevel 1 exit /b 1
+
 if not exist "backend\target\asba-print.war" (
   echo Building the print service...
-  where mvn >nul 2>&1
-  if errorlevel 1 (
-    echo Maven is required to create backend\target\asba-print.war
-    exit /b 1
-  )
   pushd backend
   call mvn -q package
   if errorlevel 1 (
@@ -59,3 +57,32 @@ echo Starting the editor at http://localhost:3000
 pushd frontend
 call npm start
 popd
+exit /b 0
+
+:ensure_maven
+if defined MAVEN_HOME if exist "%MAVEN_HOME%\bin\mvn.cmd" (
+  set "PATH=%MAVEN_HOME%\bin;%PATH%"
+)
+where mvn >nul 2>&1
+if not errorlevel 1 exit /b 0
+
+set "MAVEN_VERSION=3.9.16"
+set "MAVEN_HOME=%LOCALAPPDATA%\Apache\apache-maven-%MAVEN_VERSION%"
+if exist "%MAVEN_HOME%\bin\mvn.cmd" (
+  set "PATH=%MAVEN_HOME%\bin;%PATH%"
+  exit /b 0
+)
+
+echo Maven was not found. Installing Maven %MAVEN_VERSION%...
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $zip=Join-Path $env:TEMP 'apache-maven-3.9.16-bin.zip'; $dest=Join-Path $env:LOCALAPPDATA 'Apache'; Invoke-WebRequest -Uri 'https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.16/apache-maven-3.9.16-bin.zip' -OutFile $zip -UseBasicParsing; New-Item -ItemType Directory -Force -Path $dest | Out-Null; Expand-Archive -LiteralPath $zip -DestinationPath $dest -Force; Remove-Item $zip -Force"
+if errorlevel 1 (
+  echo Could not install Maven. Check the network connection and run this script again.
+  exit /b 1
+)
+if not exist "%MAVEN_HOME%\bin\mvn.cmd" (
+  echo Maven install did not create %MAVEN_HOME%\bin\mvn.cmd
+  exit /b 1
+)
+set "PATH=%MAVEN_HOME%\bin;%PATH%"
+echo Maven %MAVEN_VERSION% installed.
+exit /b 0

@@ -14,7 +14,7 @@
   },
   "proxy": "http://localhost:8080",
   "scripts": {
-    "start": "react-scripts start",
+    "start": "node --require ./scripts/patch-util-extend.js ./node_modules/react-scripts/scripts/start.js",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
